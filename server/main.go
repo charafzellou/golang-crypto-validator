@@ -28,6 +28,7 @@ type User struct {
 type Challenge struct {
 	Sentence    string
 	PublicKey   *ecdsa.PublicKey
+	PrivateKey  *ecdsa.PrivateKey // Added this field
 	ExpireTime  time.Time
 	ChallengeID string
 }
@@ -181,6 +182,7 @@ func encryptChallengeHandler(w http.ResponseWriter, r *http.Request) {
 	challenges[challengeID] = &Challenge{
 		Sentence:    sentence,
 		PublicKey:   publicKey,
+		PrivateKey:  privateKey, // Store the private key
 		ExpireTime:  time.Now().Add(5 * time.Minute),
 		ChallengeID: challengeID,
 	}
@@ -228,8 +230,7 @@ func submitEncryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decrypt the message using ECIES
-	privateKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privateKey := challenge.PrivateKey // Retrieve the stored private key
 	plaintext, err := decryptECIES(privateKey, ciphertext)
 	if err != nil {
 		http.Error(w, "Decryption failed", http.StatusBadRequest)

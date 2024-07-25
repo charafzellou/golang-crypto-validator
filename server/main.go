@@ -41,6 +41,7 @@ var (
 
 func main() {
 	r := mux.NewRouter()
+	r.HandleFunc("/ping", pingHandler).Methods("GET")
 	r.HandleFunc("/subscribe", subscribeHandler).Methods("POST")
 	r.HandleFunc("/info/{address}", infoHandler).Methods("GET")
 	r.HandleFunc("/challenge/hash/{address}", hashChallengeHandler).Methods("GET")
@@ -52,6 +53,11 @@ func main() {
 
 	log.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("pong"))
 }
 
 func subscribeHandler(w http.ResponseWriter, r *http.Request) {

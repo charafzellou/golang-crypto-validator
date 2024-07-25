@@ -21,6 +21,8 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Tidy Go modules
-        run: cd src && go mod tidy
-      - name: Build Go binary
-        run: go build -o BalanceSeeker ./src
+        run: go mod tidy
+      - name: Build Server Go binary
+        run: go build -o server ./server
+      - name: Build Client Go binary
+        run: go build -o client ./client

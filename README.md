@@ -1,7 +1,9 @@
-# Cryptography Challenge: Secure Communication Protocol
+# Cryptography Challenge in Go
 
 ## Overview
-In this exercise, you will implement a client application that interacts with a secure server to complete a series of cryptographic challenges. The goal is to reinforce your understanding of fundamental cryptographic concepts while simulating real-world secure communication protocols.
+In this exercise, you will implement a client application that interacts with a secure server to complete a series of cryptographic challenges.
+
+The goal is to reinforce your understanding of fundamental cryptographic concepts while simulating real-world secure communication protocols.
 
 ## Objectives
 By the end of this challenge, you should be able to:
@@ -11,17 +13,19 @@ By the end of this challenge, you should be able to:
 4. Manage a simple score-based system in a competitive environment
 
 ## The Challenge
-You are tasked with creating a client application that communicates with a provided server. The server will issue two types of cryptographic challenges: hash challenges and encryption challenges. Your client must solve these challenges correctly to earn points. The first student to reach 30 points wins the challenge.
+You are tasked with creating a client application that communicates with a provided server.
+
+The server will issue two types of cryptographic challenges: hash challenges and encryption challenges. Your client must solve these challenges correctly to earn points.
 
 ### Server Endpoints
 The server provides the following endpoints:
 
 1. `/subscribe` (POST): Register your client with the server
 2. `/info/{address}` (GET): Retrieve your current score and information
-3. `/challenge/hash/{address}` (GET): Request a hash challenge
-4. `/challenge/hash/{address}/{challengeID}` (POST): Submit a hash challenge solution
-5. `/challenge/encrypt/{address}` (GET): Request an encryption challenge
-6. `/challenge/encrypt/{address}/{challengeID}` (POST): Submit an encryption challenge solution
+3. `/challenge/hash/{address}` (GET): Request a SHA256 hash challenge
+4. `/challenge/hash/{address}/{challengeID}` (POST): Submit a SHA256 hash challenge solution
+5. `/challenge/encrypt/{address}` (GET): Request a RSA encryption challenge
+6. `/challenge/encrypt/{address}/{challengeID}` (POST): Submit a RSA encryption challenge solution
 
 ### Challenge Types
 
@@ -31,20 +35,20 @@ The server provides the following endpoints:
 
 2. **Encryption Challenge**:
    - The server provides a random sentence and a public key.
-   - Your task is to encrypt the sentence using the provided public key and submit the ciphertext back to the server.
+   - Your task is to encrypt the sentence using the provided RSA public key and submit the RSA ciphertext back to the server.
 
 ### Scoring
 - Each successful challenge completion earns you 1 point.
 - Each failed attempt results in a 3-point deduction.
-- The first student to reach a score of 30 wins the challenge.
+- The first student to reach a score of 30 wins a bonus.
 
 ## Requirements
 1. Implement a client application in a programming language of your choice.
 2. Your client should be able to:
    - Subscribe to the server with a valid Ethereum address and name
-   - Retrieve current score information
    - Request and solve both hash and encryption challenges
    - Handle errors gracefully and continue functioning
+   - Retrieve current score information
 3. Implement proper error handling and logging in your client application.
 4. Ensure your client can handle concurrent challenges and maintain a consistent state.
 

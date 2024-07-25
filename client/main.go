@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
@@ -14,11 +16,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
-const serverURL = "http://localhost:8080"
+const serverURL = "http://34.163.219.17:3000"
 
 type User struct {
 	Name    string
@@ -102,8 +102,11 @@ func performHashChallenge(address common.Address) {
 	}
 	json.NewDecoder(resp.Body).Decode(&challenge)
 
+	log.Printf("Received hash challenge: %s", challenge.Sentence)
 	hash := sha256.Sum256([]byte(challenge.Sentence))
+	log.Printf("Hash: %x", hash)
 	hashHex := hex.EncodeToString(hash[:])
+	log.Printf("Hash Hex: %s", hashHex)
 
 	solution := map[string]string{"hash": hashHex}
 	jsonData, _ := json.Marshal(solution)
@@ -121,6 +124,7 @@ func performHashChallenge(address common.Address) {
 		fmt.Printf("Hash challenge failed: %s\n", body)
 	}
 }
+
 func performEncryptChallenge(address common.Address) {
 	resp, err := http.Get(fmt.Sprintf("%s/challenge/encrypt/%s", serverURL, address.Hex()))
 	if err != nil {
@@ -140,27 +144,33 @@ func performEncryptChallenge(address common.Address) {
 		ChallengeID string `json:"challenge_id"`
 	}
 	json.NewDecoder(resp.Body).Decode(&challenge)
+	log.Printf("Received encryption challenge: %s", challenge.Sentence)
+	log.Printf("Public key: %s", challenge.PublicKey)
+	log.Printf("Challenge ID: %s", challenge.ChallengeID)
 
-	pubKeyBytes, err := hex.DecodeString(challenge.PublicKey)
-	if err != nil {
-		log.Printf("Failed to decode public key: %v", err)
+	block, _ := pem.Decode([]byte(challenge.PublicKey))
+	if block == nil || block.Type != "RSA PUBLIC KEY" {
+		log.Printf("Failed to decode PEM block containing the public key")
 		return
 	}
 
-	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
+	pubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
-		log.Printf("Failed to unmarshal public key: %v", err)
+		log.Printf("Failed to parse RSA public key: %v", err)
 		return
 	}
+	log.Printf("Public key: %v", pubKey)
 
-	ciphertext, err := encryptECIES([]byte(challenge.Sentence), pubKey)
+	ciphertext, err := encryptRSA([]byte(challenge.Sentence), pubKey)
 	if err != nil {
 		log.Printf("Failed to encrypt: %v", err)
 		return
 	}
+	log.Printf("Ciphertext: %x", ciphertext)
 
 	solution := map[string]string{"ciphertext": hex.EncodeToString(ciphertext)}
 	jsonData, _ := json.Marshal(solution)
+	log.Printf("Sending solution: %s", jsonData)
 
 	resp, err = http.Post(fmt.Sprintf("%s/challenge/encrypt/%s/%s", serverURL, address.Hex(), challenge.ChallengeID), "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -176,29 +186,10 @@ func performEncryptChallenge(address common.Address) {
 	}
 }
 
-func encryptECIES(plaintext []byte, publicKey *ecdsa.PublicKey) ([]byte, error) {
-	eciesPublicKey := ecies.ImportECDSAPublic(publicKey)
-
-	// Generate an ephemeral key pair
-	ephemeralPrivateKey, err := ecies.GenerateKey(rand.Reader, publicKey.Curve, eciesPublicKey.Params)
+func encryptRSA(plaintext []byte, publicKey *rsa.PublicKey) ([]byte, error) {
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, plaintext, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	// Perform ECDH to derive a shared secret
-	sx, sy := publicKey.Curve.ScalarMult(publicKey.X, publicKey.Y, ephemeralPrivateKey.D.Bytes())
-	sharedSecret := sha256.Sum256(append(sx.Bytes(), sy.Bytes()...))
-
-	// Use the shared secret to encrypt the plaintext
-	ciphertext := make([]byte, len(plaintext))
-	for i := 0; i < len(plaintext); i++ {
-		ciphertext[i] = plaintext[i] ^ sharedSecret[i%32]
-	}
-
-	// Prepare the final ciphertext: ephemeral public key + encrypted data
-	ephemeralPublicKey := ephemeralPrivateKey.PublicKey
-	finalCiphertext := append(ephemeralPublicKey.X.Bytes(), ephemeralPublicKey.Y.Bytes()...)
-	finalCiphertext = append(finalCiphertext, ciphertext...)
-
-	return finalCiphertext, nil
+	return ciphertext, nil
 }

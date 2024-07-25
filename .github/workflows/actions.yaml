@@ -1,0 +1,28 @@
+name: Build Go files
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: [1.22.5]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Tidy Go modules
+        run: go mod tidy
+      - name: Build Server Go binary
+        run: go build -o server ./server
+      - name: Build Client Go binary
+        run: go build -o client ./client
